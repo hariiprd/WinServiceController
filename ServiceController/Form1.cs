@@ -157,6 +157,7 @@ public partial class Form1 : Form
             service.ButtonAction.Dispose();
             service.ButtonDelete.Dispose();
         }
+        listService = new List<ServiceModel>();
         if (!File.Exists(pathJSON))
         {
             return;
