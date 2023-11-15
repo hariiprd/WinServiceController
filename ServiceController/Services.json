@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "ReportWarehouse",
+    "DisplayName": "Report Warehouse"
+  },
+  {
+    "Name": "AMQDeposMYB",
+    "DisplayName": "AMQ Depos MYB"
+  },
+  {
+    "Name": "AMQDeposBCA",
+    "DisplayName": "AMQ Depos BCA"
+  }
+]
