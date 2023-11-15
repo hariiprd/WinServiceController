@@ -12,22 +12,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Services.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="icons8-service-96.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Services.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -43,6 +33,12 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="delete.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

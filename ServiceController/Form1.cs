@@ -146,10 +146,22 @@ public partial class Form1 : Form
 
     #region "Tab 2"
     private List<ServiceModel> listService = new List<ServiceModel>();
+    readonly string pathJSON = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Services.json");
 
     private void LoadServices()
     {
-        using StreamReader reader = new(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Services.json"));
+        foreach (ServiceModel service in listService)
+        {
+            service.LabelService.Dispose();
+            service.LabelPID.Dispose();
+            service.ButtonAction.Dispose();
+            service.ButtonDelete.Dispose();
+        }
+        if (!File.Exists(pathJSON))
+        {
+            return;
+        }
+        using StreamReader reader = new(pathJSON);
         string json = reader.ReadToEnd();
         List<ServicesFile>? services = JsonConvert.DeserializeObject<List<ServicesFile>>(json);
         if (services == null)
@@ -177,7 +189,7 @@ public partial class Form1 : Form
                         Name = "lbl" + servicesFile.Name,
                         Text = servicesFile.DisplayName,
                         Size = new Size(151, 23),
-                        Location = new Point(29, posY),
+                        Location = new Point(54, posY),
                         Font = new Font("Segoe UI", 10, FontStyle.Regular)
                     },
                     LabelPID = new Label
@@ -185,7 +197,7 @@ public partial class Form1 : Form
                         Name = "lblPID" + servicesFile.Name,
                         Text = "",
                         Size = new Size(70, 23),
-                        Location = new Point(217, posY),
+                        Location = new Point(242, posY),
                         Font = new Font("Segoe UI", 10, FontStyle.Regular)
                     },
                     ButtonAction = new Button
@@ -193,11 +205,20 @@ public partial class Form1 : Form
                         Name = "btn" + servicesFile.Name,
                         Text = "Start",
                         Size = new Size(94, 29),
-                        Location = new Point(358, posY),
+                        Location = new Point(383, posY),
+                    },
+                    ButtonDelete = new Button
+                    {
+                        Name = "btnDelete" + servicesFile.Name,
+                        Text = "",
+                        Size = new Size(40, 40),
+                        Location = new Point(6, posY - 10),
+                        Image = Image.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "delete.ico"))
                     }
                 };
                 model.ButtonAction.Click += BtnClick;
-                tabPage2.Controls.AddRange(new Control[] { model.LabelService, model.LabelPID, model.ButtonAction });
+                model.ButtonDelete.Click += BtnDeleteClick;
+                tabPage2.Controls.AddRange(new Control[] { model.LabelService, model.LabelPID, model.ButtonAction, model.ButtonDelete });
                 listService.Add(model);
                 i++;
             }
@@ -227,56 +248,145 @@ public partial class Form1 : Form
         }
     }
 
-    public void BtnClick(object? sender, EventArgs e)
+    public void BtnDeleteClick(object? sender, EventArgs e)
     {
-        if (sender != null)
+        try
         {
-            Button btnAction = (Button)sender;
-            foreach (var serviceModel in listService)
+            if (sender != null)
             {
-                if (serviceModel.ButtonAction.Name == btnAction.Name)
+                Button btnDelete = (Button)sender;
+                foreach (var serviceModel in listService)
                 {
-                    var services = ServiceController.GetServices("");
-                    foreach (var service in services)
+                    if (serviceModel.ButtonDelete.Name == btnDelete.Name)
                     {
-                        if (service.ServiceName == serviceModel.ServiceName)
+                        DialogResult result = MessageBox.Show("Confirm delete ?", "Confirmation", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+                        if (result == DialogResult.OK)
                         {
-                            if (btnAction.Text == "Start")
+                            List<ServicesFile> servicesFiles = JsonConvert.DeserializeObject<List<ServicesFile>>(File.ReadAllText(pathJSON));
+                            for (int i = 0; i < servicesFiles.Count; i++)
                             {
-                                if (service.Status == ServiceControllerStatus.Stopped)
+                                if (servicesFiles[i].Name == serviceModel.ServiceName)
                                 {
-                                    service.Start();
-                                    service.WaitForStatus(ServiceControllerStatus.Running);
-
-                                    Process[] processes = Process.GetProcesses();
-                                    foreach (var process in processes)
-                                    {
-                                        if (process.ProcessName == serviceModel.ServiceName)
-                                        {
-                                            serviceModel.LabelPID.Text = process.Id.ToString();
-                                        }
-                                    }
-                                    serviceModel.ButtonAction.Text = "Stop";
-                                    serviceModel.LabelService.BackColor = Color.GreenYellow;
-                                }
-                            }
-                            else
-                            {
-                                if (service.Status == ServiceControllerStatus.Running)
-                                {
-                                    service.Stop();
-                                    service.WaitForStatus(ServiceControllerStatus.Stopped);
-
-                                    serviceModel.LabelPID.Text = "";
-                                    serviceModel.ButtonAction.Text = "Start";
-                                    serviceModel.LabelService.BackColor = Color.White;
+                                    servicesFiles.RemoveAt(i);
+                                    File.WriteAllText(pathJSON, JsonConvert.SerializeObject(servicesFiles));
+                                    LoadServices();
+                                    return;
                                 }
                             }
                         }
                     }
                 }
             }
+        }catch(Exception ex)
+        {
+            string msg = ex.Message;
+            if (ex.InnerException != null)
+            {
+                msg += ". " + ex.InnerException.Message;
+                if (ex.InnerException.InnerException != null)
+                {
+                    msg += ". " + ex.InnerException.InnerException.Message;
+                    if (ex.InnerException.InnerException.InnerException != null)
+                    {
+                        msg += ". " + ex.InnerException.InnerException.InnerException.Message;
+                    }
+                }
+            }
+            MessageBox.Show(msg, "Failed");
         }
+    }
+    public void BtnClick(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (sender != null)
+            {
+                Button btnAction = (Button)sender;
+                foreach (var serviceModel in listService)
+                {
+                    if (serviceModel.ButtonAction.Name == btnAction.Name)
+                    {
+                        var services = ServiceController.GetServices("");
+                        foreach (var service in services)
+                        {
+                            if (service.ServiceName == serviceModel.ServiceName)
+                            {
+                                if (btnAction.Text == "Start")
+                                {
+                                    if (service.Status == ServiceControllerStatus.Stopped)
+                                    {
+                                        service.Start();
+                                        service.WaitForStatus(ServiceControllerStatus.Running);
+
+                                        Process[] processes = Process.GetProcesses();
+                                        foreach (var process in processes)
+                                        {
+                                            if (process.ProcessName == serviceModel.ServiceName)
+                                            {
+                                                serviceModel.LabelPID.Text = process.Id.ToString();
+                                            }
+                                        }
+                                        serviceModel.ButtonAction.Text = "Stop";
+                                        serviceModel.LabelService.BackColor = Color.GreenYellow;
+                                    }
+                                }
+                                else
+                                {
+                                    if (service.Status == ServiceControllerStatus.Running)
+                                    {
+                                        service.Stop();
+                                        service.WaitForStatus(ServiceControllerStatus.Stopped);
+
+                                        serviceModel.LabelPID.Text = "";
+                                        serviceModel.ButtonAction.Text = "Start";
+                                        serviceModel.LabelService.BackColor = Color.White;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }catch (Exception ex)
+        {
+            string msg = ex.Message;
+            if (ex.InnerException!= null)
+            {
+                msg += ". " + ex.InnerException.Message;
+                if (ex.InnerException.InnerException != null)
+                {
+                    msg += ". " + ex.InnerException.InnerException.Message;
+                    if (ex.InnerException.InnerException.InnerException != null)
+                    {
+                        msg += ". " + ex.InnerException.InnerException.InnerException.Message;
+                    }
+                }
+            }
+            MessageBox.Show(msg, "Failed");
+        }
+    }
+
+    private void btnAddService_Click(object sender, EventArgs e)
+    {
+        if (txtNameService.Text.Length == 0)
+        {
+            MessageBox.Show("Enter Service Name !!", "Failed");
+            return;
+        }
+        List<ServicesFile> services = new List<ServicesFile>();
+        if (File.Exists(pathJSON))
+        {
+            services = JsonConvert.DeserializeObject<List<ServicesFile>>(File.ReadAllText(pathJSON));
+        }
+        services.Add(new ServicesFile
+        {
+            Name = txtNameService.Text,
+            DisplayName = txtDisplayService.Text == "" ? txtNameService.Text : txtDisplayService.Text
+        });
+        File.WriteAllText(pathJSON, JsonConvert.SerializeObject(services));
+        LoadServices();
+        txtNameService.Text = "";
+        txtDisplayService.Text = "";
     }
 
     #endregion

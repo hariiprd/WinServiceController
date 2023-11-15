@@ -12,5 +12,6 @@ namespace ServiceController.Models
         public Label LabelService { get; set; }
         public Label LabelPID { get; set; }
         public Button ButtonAction { get; set; }
+        public Button ButtonDelete { get; set; }
     }
 }
